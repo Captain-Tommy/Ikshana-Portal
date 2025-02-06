@@ -7,8 +7,6 @@ import {
   Paper,
   Typography,
   Button,
-  AppBar,
-  Toolbar,
   TextField,
   Dialog,
   DialogTitle,
@@ -31,8 +29,31 @@ import {
   Tooltip,
   FormHelperText,
   Stack,
-  Chip
+  Chip,
+  Menu,
+  IconButton,
+  Card,
+  CardContent,
+  Drawer,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText as MuiListItemText
 } from '@mui/material';
+import {
+  GetApp as DownloadIcon,
+  PictureAsPdf as PdfIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Dashboard as DashboardIcon,
+  People as PeopleIcon,
+  MonetizationOn as MonetizationOnIcon,
+  Event as EventIcon,
+  Announcement as AnnouncementIcon,
+  Receipt as ReceiptIcon,
+  Logout as LogoutIcon
+} from '@mui/icons-material';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import axios from 'axios';
 
 const AdminDashboard = () => {
@@ -72,6 +93,108 @@ const AdminDashboard = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editingDonation, setEditingDonation] = useState(null);
   const [editingSpending, setEditingSpending] = useState(null);
+  const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [openDateRangeDialog, setOpenDateRangeDialog] = useState(false);
+  const [selectedReportType, setSelectedReportType] = useState(null);
+  const [activeSection, setActiveSection] = useState('dashboard');
+
+  const styles = {
+    container: {
+      display: 'flex',
+      minHeight: '100vh',
+      backgroundColor: '#f0f7ff',
+      background: 'linear-gradient(135deg, #f0f7ff 0%, #e3f2ff 100%)',
+    },
+    sidebar: {
+      width: '240px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRight: '1px solid rgba(255, 255, 255, 0.3)',
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      bottom: 0,
+      overflowY: 'auto',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+      zIndex: 1000,
+    },
+    sidebarItem: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '12px 16px',
+      borderRadius: '12px',
+      marginBottom: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      color: '#1a237e',
+      '&:hover': {
+        backgroundColor: 'rgba(26, 35, 126, 0.05)',
+        transform: 'translateX(5px)',
+      },
+    },
+    mainContent: {
+      marginLeft: '260px',
+      flex: 1,
+      padding: '24px 32px',
+      width: 'calc(100% - 260px)',
+      boxSizing: 'border-box',
+    },
+    header: {
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '16px',
+      padding: '20px',
+      marginBottom: '24px',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    section: {
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '24px',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+    },
+    card: {
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderRadius: '12px',
+      padding: '20px',
+      marginBottom: '16px',
+      boxShadow: '0 4px 16px 0 rgba(31, 38, 135, 0.05)',
+      transition: 'transform 0.3s ease',
+      '&:hover': {
+        transform: 'translateY(-5px)',
+      },
+    },
+    statCard: {
+      padding: '24px',
+      borderRadius: '16px',
+      color: 'white',
+      backgroundImage: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+    },
+    table: {
+      '& .MuiTableCell-root': {
+        borderColor: 'rgba(224, 224, 224, 0.4)',
+      },
+      '& .MuiTableRow-root:nth-of-type(odd)': {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      },
+    },
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -454,7 +577,12 @@ const AdminDashboard = () => {
       username: user.username,
       full_name: user.full_name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      ikshana_id: user.ikshana_id,
+      department: user.department,
+      section: user.section,
+      dob: user.dob,
+      college_roll_number: user.college_roll_number
     });
     setEditingUser(user);
     setOpenDialog('user');
@@ -645,13 +773,23 @@ const AdminDashboard = () => {
   };
 
   const isUserFormValid = () => {
-    return (
-      formData.username?.trim() &&
-      formData.full_name?.trim() &&
-      formData.email?.trim() &&
-      formData.role &&
-      (!formData.password || formData.password.length >= 6)
-    );
+    const requiredFields = [
+      'username',
+      'full_name',
+      'email',
+      'role',
+      'ikshana_id',
+      'department',
+      'section',
+      'dob',
+      'college_roll_number'
+    ];
+    
+    if (!editingUser) {
+      requiredFields.push('password');
+    }
+
+    return requiredFields.every(field => formData[field] && formData[field].trim() !== '');
   };
 
   const isAnnouncementFormValid = () => {
@@ -661,6 +799,304 @@ const AdminDashboard = () => {
       formData.visibility
     );
   };
+
+  const handleGenerateReport = (reportType) => {
+    setSelectedReportType(reportType);
+    setDateRange({ start: '', end: '' });
+    setOpenDateRangeDialog(true);
+  };
+
+  const handleDateRangeSubmit = () => {
+    if (selectedReportType === 'donations') {
+      generateDonationsPDF(dateRange);
+    } else {
+      generateSpendingsPDF(dateRange);
+    }
+    setOpenDateRangeDialog(false);
+  };
+
+  const generateDonationsPDF = (dateRange) => {
+    setDownloadingReport(true);
+    try {
+      const doc = new jsPDF();
+      
+      // Filter donations based on date range
+      const filteredDonations = donations.filter(donation => {
+        const donationDate = new Date(donation.created_at);
+        return donationDate >= new Date(dateRange.start) && donationDate <= new Date(dateRange.end);
+      });
+
+      // Calculate filtered statistics
+      const filteredStats = {
+        totalDonated: filteredDonations.reduce((sum, d) => sum + d.amount, 0),
+        verifiedCount: filteredDonations.filter(d => d.status === 'verified').length,
+        pendingCount: filteredDonations.filter(d => d.status === 'pending').length
+      };
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Ikshana Foundation - Donations Report', 14, 22);
+      doc.setFontSize(12);
+      doc.text(`Period: ${new Date(dateRange.start).toLocaleDateString()} to ${new Date(dateRange.end).toLocaleDateString()}`, 14, 32);
+
+      // Add statistics
+      doc.setFontSize(14);
+      doc.text('Donation Statistics', 14, 45);
+      doc.setFontSize(12);
+      const stats = [
+        ['Total Donations:', `₹${filteredStats.totalDonated}`],
+        ['Verified Donations:', filteredStats.verifiedCount],
+        ['Pending Donations:', filteredStats.pendingCount],
+        ['Average Donation:', `₹${(filteredStats.totalDonated / (filteredStats.verifiedCount + filteredStats.pendingCount) || 0).toFixed(2)}`]
+      ];
+      doc.autoTable({
+        startY: 50,
+        head: [['Metric', 'Value']],
+        body: stats,
+        theme: 'grid',
+        headStyles: { fillColor: [63, 81, 181] }
+      });
+
+      // Add donations table
+      if (filteredDonations.length > 0) {
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.text('Detailed Donations List', 14, 22);
+        
+        const donationsData = filteredDonations.map(donation => [
+          new Date(donation.created_at).toLocaleDateString(),
+          donation.user_name || 'N/A',
+          `₹${donation.amount}`,
+          donation.payment_method,
+          donation.reference_number,
+          donation.status,
+          donation.description || 'N/A'
+        ]);
+
+        doc.autoTable({
+          startY: 30,
+          head: [['Date', 'Donor', 'Amount', 'Payment Method', 'Reference', 'Status', 'Description']],
+          body: donationsData,
+          theme: 'grid',
+          headStyles: { fillColor: [63, 81, 181] },
+          styles: { fontSize: 10 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 25 },
+            5: { cellWidth: 20 }
+          }
+        });
+      }
+
+      doc.save(`ikshana-donations-report-${dateRange.start}-to-${dateRange.end}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF report');
+    }
+    setDownloadingReport(false);
+    setDownloadMenuAnchor(null);
+  };
+
+  const generateSpendingsPDF = (dateRange) => {
+    setDownloadingReport(true);
+    try {
+      const doc = new jsPDF();
+      
+      // Filter spendings based on date range
+      const filteredSpendings = spendings.filter(spending => {
+        const spendingDate = new Date(spending.date);
+        return spendingDate >= new Date(dateRange.start) && spendingDate <= new Date(dateRange.end);
+      });
+
+      // Calculate filtered statistics
+      const filteredStats = {
+        totalSpent: filteredSpendings.reduce((sum, s) => sum + s.amount, 0),
+        categoryTotals: filteredSpendings.reduce((acc, s) => {
+          acc[s.category] = (acc[s.category] || 0) + s.amount;
+          return acc;
+        }, {})
+      };
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text('Ikshana Foundation - Spendings Report', 14, 22);
+      doc.setFontSize(12);
+      doc.text(`Period: ${new Date(dateRange.start).toLocaleDateString()} to ${new Date(dateRange.end).toLocaleDateString()}`, 14, 32);
+
+      // Add statistics
+      doc.setFontSize(14);
+      doc.text('Spending Statistics', 14, 45);
+      doc.setFontSize(12);
+      
+      const categoryStats = Object.entries(filteredStats.categoryTotals).map(([category, amount]) => [
+        category,
+        `₹${amount}`
+      ]);
+
+      doc.autoTable({
+        startY: 50,
+        head: [['Category', 'Total Amount']],
+        body: [
+          ['Total Spent:', `₹${filteredStats.totalSpent}`],
+          ...categoryStats
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [63, 81, 181] }
+      });
+
+      // Add spendings table
+      if (filteredSpendings.length > 0) {
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.text('Detailed Spendings List', 14, 22);
+        
+        const spendingsData = filteredSpendings.map(spending => [
+          new Date(spending.date).toLocaleDateString(),
+          spending.category,
+          `₹${spending.amount}`,
+          spending.description || 'N/A',
+          spending.approved_by || 'N/A'
+        ]);
+
+        doc.autoTable({
+          startY: 30,
+          head: [['Date', 'Category', 'Amount', 'Description', 'Approved By']],
+          body: spendingsData,
+          theme: 'grid',
+          headStyles: { fillColor: [63, 81, 181] },
+          styles: { fontSize: 10 },
+          columnStyles: {
+            0: { cellWidth: 25 },
+            2: { cellWidth: 20 }
+          }
+        });
+      }
+
+      doc.save(`ikshana-spendings-report-${dateRange.start}-to-${dateRange.end}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      setError('Failed to generate PDF report');
+    }
+    setDownloadingReport(false);
+    setDownloadMenuAnchor(null);
+  };
+
+  const renderDashboardContent = () => (
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ color: '#1a237e' }}>
+        Admin Dashboard Overview
+      </Typography>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={3}>
+          <Card sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)' }}>
+            <CardContent>
+              <Typography variant="h6">Total Users</Typography>
+              <Typography variant="h4">{users.length}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Card sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)' }}>
+            <CardContent>
+              <Typography variant="h6">Total Donations</Typography>
+              <Typography variant="h4">{donationStats.totalDonated}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Card sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #c62828 0%, #ef5350 100%)' }}>
+            <CardContent>
+              <Typography variant="h6">Total Spendings</Typography>
+              <Typography variant="h4">{spendingStats.totalSpent}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={3}>
+          <Card sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #f57c00 0%, #ffa726 100%)' }}>
+            <CardContent>
+              <Typography variant="h6">Pending Donations</Typography>
+              <Typography variant="h4">{donationStats.pendingCount}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+      
+      {/* Recent Activities Section */}
+      <Box sx={styles.section}>
+        <Typography variant="h5" gutterBottom>Recent Activities</Typography>
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={6}>
+            <Card sx={styles.card}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Latest Donations</Typography>
+                <TableContainer>
+                  <Table sx={styles.table} size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Donor</TableCell>
+                        <TableCell>Amount</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {donations.slice(0, 2).map((donation) => (
+                        <TableRow key={donation.id}>
+                          <TableCell>{donation.user?.ikshana_id || 'Anonymous'}</TableCell>
+                          <TableCell>₹{donation.amount}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={donation.status}
+                              color={donation.status === 'verified' ? 'success' : 
+                                    donation.status === 'pending' ? 'warning' : 'error'}
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Card sx={{...styles.card, height: '100%'}}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Recent Events</Typography>
+                <TableContainer>
+                  <Table sx={styles.table} size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Event</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Status</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {events.slice(0, 2).map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell>{event.title}</TableCell>
+                          <TableCell>{new Date(event.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={new Date(event.date) > new Date() ? 'Upcoming' : 'Past'}
+                              color={new Date(event.date) > new Date() ? 'primary' : 'default'}
+                              size="small"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+    </Box>
+  );
 
   const renderCreateAnnouncementDialog = () => {
     return (
@@ -1053,65 +1489,6 @@ const AdminDashboard = () => {
     );
   };
 
-  const renderEvents = () => (
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Title</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell>Date</TableCell>
-            <TableCell>Time</TableCell>
-            <TableCell>Location</TableCell>
-            <TableCell>Created By</TableCell>
-            <TableCell>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {events.map((event) => (
-            <TableRow key={event.id}>
-              <TableCell>{event.title}</TableCell>
-              <TableCell>{event.description}</TableCell>
-              <TableCell>
-                {new Date(event.date).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </TableCell>
-              <TableCell>{event.time}</TableCell>
-              <TableCell>{event.location}</TableCell>
-              <TableCell>{event.created_by}</TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={1}>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={() => handleEditEvent(event)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={() => handleDeleteEvent(event.id)}
-                  >
-                    Delete
-                  </Button>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          ))}
-          {events.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={7} align="center">No events found</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-
   const renderUsers = () => (
     <TableContainer>
       <Table>
@@ -1141,7 +1518,12 @@ const AdminDashboard = () => {
                         username: user.username,
                         full_name: user.full_name,
                         email: user.email,
-                        role: user.role
+                        role: user.role,
+                        ikshana_id: user.ikshana_id,
+                        department: user.department,
+                        section: user.section,
+                        dob: user.dob,
+                        college_roll_number: user.college_roll_number
                       });
                       setEditingUser(user);
                       setOpenDialog('user');
@@ -1312,6 +1694,65 @@ const AdminDashboard = () => {
     </TableContainer>
   );
 
+  const renderEvents = () => (
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Title</TableCell>
+            <TableCell>Description</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell>Time</TableCell>
+            <TableCell>Location</TableCell>
+            <TableCell>Created By</TableCell>
+            <TableCell>Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {events.map((event) => (
+            <TableRow key={event.id}>
+              <TableCell>{event.title}</TableCell>
+              <TableCell>{event.description}</TableCell>
+              <TableCell>
+                {new Date(event.date).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </TableCell>
+              <TableCell>{event.time}</TableCell>
+              <TableCell>{event.location}</TableCell>
+              <TableCell>{event.created_by}</TableCell>
+              <TableCell>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => handleEditEvent(event)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => handleDeleteEvent(event.id)}
+                  >
+                    Delete
+                  </Button>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          ))}
+          {events.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} align="center">No events found</TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
   const handleCreateAnnouncement = () => {
     setFormData({
       title: '',
@@ -1323,353 +1764,289 @@ const AdminDashboard = () => {
     setOpenDialog('announcement');
   };
 
-  return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Admin Dashboard
-          </Typography>
-          <Button color="inherit" onClick={handleLogout}>
-            Logout
+  const renderDonationsSection = () => (
+    <Box sx={styles.section}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">Donations List</Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<DownloadIcon />}
+            onClick={(e) => setDownloadMenuAnchor(e.currentTarget)}
+          >
+            Download Report
           </Button>
-        </Toolbar>
-      </AppBar>
+        </Stack>
+      </Box>
+      {renderDonations()}
 
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Grid container spacing={3}>
-          {/* Financial Overview */}
-          <Grid item xs={12}>
-            <Typography variant="h5" gutterBottom>Financial Overview</Typography>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'white' }}>
-              <Typography variant="h6">Total Donations</Typography>
-              <Typography variant="h4">₹{donationStats.totalDonated}</Typography>
-              <Typography variant="body2">({donationStats.verifiedCount} verified donations)</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, bgcolor: 'warning.light', color: 'white' }}>
-              <Typography variant="h6">Pending Donations</Typography>
-              <Typography variant="h4">₹{donationStats.totalPending}</Typography>
-              <Typography variant="body2">({donationStats.pendingCount} pending donations)</Typography>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'white' }}>
-              <Typography variant="h6">Total Expenses</Typography>
-              <Typography variant="h4">₹{spendingStats.totalSpent}</Typography>
-              <Typography variant="body2">Balance: ₹{donationStats.totalDonated - spendingStats.totalSpent}</Typography>
-            </Paper>
-          </Grid>
+      {/* Download Report Menu */}
+      <Menu
+        anchorEl={downloadMenuAnchor}
+        open={Boolean(downloadMenuAnchor)}
+        onClose={() => setDownloadMenuAnchor(null)}
+      >
+        <MenuItem onClick={() => handleGenerateReport('donations')}>
+          <PdfIcon sx={{ mr: 1 }} /> All Donations
+        </MenuItem>
+        <MenuItem onClick={() => {
+          setSelectedReportType('date_range');
+          setOpenDateRangeDialog(true);
+          setDownloadMenuAnchor(null);
+        }}>
+          <PdfIcon sx={{ mr: 1 }} /> Custom Date Range
+        </MenuItem>
+      </Menu>
 
-          {/* Monthly Donation Trends */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>Monthly Donation Trends</Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Month</TableCell>
-                      <TableCell align="right">Total Amount</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(donationStats.monthlyTotals)
-                      .sort((a, b) => b[0].localeCompare(a[0]))
-                      .map(([month, amount]) => (
-                        <TableRow key={month}>
-                          <TableCell>{new Date(month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</TableCell>
-                          <TableCell align="right">₹{amount}</TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
+      {/* Date Range Dialog */}
+      <Dialog open={openDateRangeDialog} onClose={() => setOpenDateRangeDialog(false)}>
+        <DialogTitle>Select Date Range</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2 }}>
+            <TextField
+              label="Start Date"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              label="End Date"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDateRangeDialog(false)}>Cancel</Button>
+          <Button onClick={() => {
+            handleDateRangeSubmit();
+            setOpenDateRangeDialog(false);
+          }} variant="contained">
+            Download
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
 
-          {/* Spending Categories Summary */}
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Spending Summary</Typography>
-                <Typography variant="h6" color="primary">
-                  Total Spent: ₹{(spendingStats?.totalSpent || 0).toLocaleString()}
-                </Typography>
-              </Box>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Category</TableCell>
-                      <TableCell align="right">Total Amount</TableCell>
-                      <TableCell align="right">Percentage</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.entries(spendingStats?.categoryTotals || {}).map(([category, amount]) => (
-                      <TableRow key={category}>
-                        <TableCell>{category}</TableCell>
-                        <TableCell align="right">₹{amount.toLocaleString()}</TableCell>
-                        <TableCell align="right">
-                          {((amount / (spendingStats?.totalSpent || 1)) * 100).toFixed(1)}%
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {Object.keys(spendingStats?.categoryTotals || {}).length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={3} align="center">No spending records found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
+  const renderSpendingsSection = () => (
+    <Box sx={styles.section}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">Spending Records</Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<DownloadIcon />}
+            onClick={() => handleDownloadSpendingReport()}
+          >
+            Download Report
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setSpendingForm({
+                amount: '',
+                description: '',
+                category: '',
+                date: new Date().toISOString().split('T')[0],
+                reference_number: ''
+              });
+              setEditingSpending(null);
+              setOpenDialog('spending');
+            }}
+            startIcon={<ReceiptIcon />}
+          >
+            Add Spending
+          </Button>
+        </Stack>
+      </Box>
+      {renderSpending()}
+    </Box>
+  );
 
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Users</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    setFormData({
-                      username: '',
-                      full_name: '',
-                      email: '',
-                      role: 'member'
-                    });
-                    setEditingUser(null);
-                    setOpenDialog('user');
-                  }}
-                >
-                  Add User
-                </Button>
-              </Box>
-              {renderUsers()}
-            </Paper>
-          </Grid>
+  const renderUsersSection = () => (
+    <Box sx={styles.section}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">Users List</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => {
+            setFormData({
+              username: '',
+              full_name: '',
+              email: '',
+              role: 'member',
+              password: '',
+              ikshana_id: '',
+              department: '',
+              section: '',
+              dob: '',
+              college_roll_number: ''
+            });
+            setEditingUser(null);
+            setOpenDialog('user');
+          }}
+          startIcon={<PeopleIcon />}
+        >
+          Create User
+        </Button>
+      </Box>
+      {renderUsers()}
 
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Events</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleCreateEvent}
-                >
-                  Create Event
-                </Button>
-              </Box>
-              {renderEvents()}
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Announcements</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleCreateAnnouncement}
-                >
-                  Create Announcement
-                </Button>
-              </Box>
-              {renderAnnouncements()}
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Donations</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    setFormData({
-                      amount: '',
-                      reference_number: '',
-                      status: 'pending',
-                      notes: ''
-                    });
-                    setEditingDonation(null);
-                    setOpenDialog('donation');
-                  }}
-                >
-                  Add Donation
-                </Button>
-              </Box>
-              {renderDonations()}
-            </Paper>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Spending Records</Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => {
-                    setSpendingForm({
-                      amount: '',
-                      description: '',
-                      category: '',
-                      date: new Date().toISOString().split('T')[0],
-                      reference_number: ''
-                    });
-                    setEditingSpending(null);
-                    setOpenDialog('spending');
-                  }}
-                >
-                  Add Spending
-                </Button>
-              </Box>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Amount</TableCell>
-                      <TableCell>Description</TableCell>
-                      <TableCell>Category</TableCell>
-                      <TableCell>Reference Number</TableCell>
-                      <TableCell>Created By</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {spendings.map((spend) => (
-                      <TableRow key={spend.id}>
-                        <TableCell>
-                          {new Date(spend.date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>₹{spend.amount.toLocaleString()}</TableCell>
-                        <TableCell>{spend.description}</TableCell>
-                        <TableCell>{spend.category}</TableCell>
-                        <TableCell>{spend.reference_number || '-'}</TableCell>
-                        <TableCell>{spend.created_by}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1}>
-                            <Button
-                              variant="outlined"
-                              color="primary"
-                              onClick={() => handleInitEditSpending(spend)}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              onClick={() => handleDeleteSpending(spend.id)}
-                            >
-                              Delete
-                            </Button>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {spendings.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center">No spending records found</TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
-        </Grid>
-      </Container>
-
-      {renderEventDialog()}
-      {renderCreateAnnouncementDialog()}
-      {renderCreateDonationDialog()}
-      {renderSpendingDialog()}
-
-      <Dialog open={openDialog === 'user'} onClose={handleDialogClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingUser ? 'Edit User' : 'Create User'}</DialogTitle>
+      {/* User Creation/Edit Dialog */}
+      <Dialog 
+        open={openDialog === 'user'} 
+        onClose={() => {
+          setOpenDialog('');
+          setError('');
+        }}
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>
+          {editingUser ? 'Edit User' : 'Create New User'}
+        </DialogTitle>
         <DialogContent>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-          <TextField
-            autoFocus
-            margin="dense"
-            name="username"
-            label="Username"
-            type="text"
-            fullWidth
-            required
-            value={formData.username || ''}
-            onChange={handleInputChange}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            name="full_name"
-            label="Full Name"
-            type="text"
-            fullWidth
-            required
-            value={formData.full_name || ''}
-            onChange={handleInputChange}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            name="email"
-            label="Email"
-            type="email"
-            fullWidth
-            required
-            value={formData.email || ''}
-            onChange={handleInputChange}
-            sx={{ mb: 2 }}
-          />
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Role</InputLabel>
-            <Select
-              name="role"
-              value={formData.role || 'member'}
-              onChange={handleInputChange}
-              required
-            >
-              <MenuItem value="member">Member</MenuItem>
-              <MenuItem value="admin">Admin</MenuItem>
-            </Select>
-          </FormControl>
-          {!editingUser && (
-            <TextField
-              margin="dense"
-              name="password"
-              label="Password"
-              type="password"
-              fullWidth
-              required
-              value={formData.password || ''}
-              onChange={handleInputChange}
-              sx={{ mb: 2 }}
-            />
-          )}
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Full Name"
+                name="full_name"
+                value={formData.full_name || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Username"
+                name="username"
+                value={formData.username || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Role</InputLabel>
+                <Select
+                  name="role"
+                  value={formData.role || 'member'}
+                  onChange={handleInputChange}
+                  label="Role"
+                >
+                  <MenuItem value="member">Member</MenuItem>
+                  <MenuItem value="admin">Admin</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Ikshana ID"
+                name="ikshana_id"
+                value={formData.ikshana_id || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="College Roll Number"
+                name="college_roll_number"
+                value={formData.college_roll_number || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Department"
+                name="department"
+                value={formData.department || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Section"
+                name="section"
+                value={formData.section || ''}
+                onChange={handleInputChange}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                required
+                fullWidth
+                label="Date of Birth"
+                name="dob"
+                type="date"
+                value={formData.dob || ''}
+                onChange={handleInputChange}
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+            {!editingUser && (
+              <Grid item xs={12}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Password"
+                  name="password"
+                  type="password"
+                  value={formData.password || ''}
+                  onChange={handleInputChange}
+                  helperText="Minimum 8 characters"
+                />
+              </Grid>
+            )}
+          </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
+          <Button 
+            onClick={() => {
+              setOpenDialog('');
+              setError('');
+            }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={handleUserSubmit}
             variant="contained" 
@@ -1680,13 +2057,204 @@ const AdminDashboard = () => {
           </Button>
         </DialogActions>
       </Dialog>
+    </Box>
+  );
 
-      <Snackbar
-        open={!!successMessage}
-        autoHideDuration={6000}
-        onClose={() => setSuccessMessage('')}
-        message={successMessage}
-      />
+  const renderEventsSection = () => (
+    <Box sx={styles.section}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">Events List</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleCreateEvent}
+          startIcon={<EventIcon />}
+        >
+          Create Event
+        </Button>
+      </Box>
+      {renderEvents()}
+    </Box>
+  );
+
+  const renderAnnouncementsSection = () => (
+    <Box sx={styles.section}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h6">Announcements List</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleCreateAnnouncement}
+          startIcon={<AnnouncementIcon />}
+        >
+          Create Announcement
+        </Button>
+      </Box>
+      {renderAnnouncements()}
+    </Box>
+  );
+
+  const handleDownloadSpendingReport = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/admin/spending/report`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob'
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `spending_report_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      setSuccessMessage('Spending report downloaded successfully');
+    } catch (error) {
+      console.error('Error downloading spending report:', error);
+      setError('Failed to download spending report');
+    }
+  };
+
+  return (
+    <Box sx={styles.container}>
+      {/* Sidebar */}
+      <Box sx={styles.sidebar}>
+        <Typography variant="h5" sx={{ mb: 4, color: '#1a237e', fontWeight: 'bold' }}>
+          Admin Panel
+        </Typography>
+        <List>
+          <ListItem
+            button
+            onClick={() => setActiveSection('dashboard')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'dashboard' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><DashboardIcon /></ListItemIcon>
+            <MuiListItemText primary="Dashboard" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => setActiveSection('users')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'users' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><PeopleIcon /></ListItemIcon>
+            <MuiListItemText primary="Users" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => setActiveSection('donations')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'donations' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><MonetizationOnIcon /></ListItemIcon>
+            <MuiListItemText primary="Donations" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => setActiveSection('spendings')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'spendings' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><ReceiptIcon /></ListItemIcon>
+            <MuiListItemText primary="Spendings" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => setActiveSection('events')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'events' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><EventIcon /></ListItemIcon>
+            <MuiListItemText primary="Events" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={() => setActiveSection('announcements')}
+            sx={{
+              ...styles.sidebarItem,
+              backgroundColor: activeSection === 'announcements' ? 'rgba(26, 35, 126, 0.05)' : 'transparent'
+            }}
+          >
+            <ListItemIcon><AnnouncementIcon /></ListItemIcon>
+            <MuiListItemText primary="Announcements" />
+          </ListItem>
+          <ListItem
+            button
+            onClick={handleLogout}
+            sx={{
+              ...styles.sidebarItem,
+              marginTop: 'auto',
+              color: '#d32f2f'
+            }}
+          >
+            <ListItemIcon><LogoutIcon sx={{ color: '#d32f2f' }} /></ListItemIcon>
+            <MuiListItemText primary="Logout" />
+          </ListItem>
+        </List>
+      </Box>
+
+      {/* Main Content */}
+      <Box sx={styles.mainContent}>
+        <Box sx={styles.header}>
+          <Typography variant="h5" sx={{ color: '#1a237e' }}>
+            {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
+          </Typography>
+        </Box>
+
+        {/* Render content based on active section */}
+        {activeSection === 'dashboard' && renderDashboardContent()}
+        {activeSection === 'users' && renderUsersSection()}
+        {activeSection === 'donations' && renderDonationsSection()}
+        {activeSection === 'spendings' && renderSpendingsSection()}
+        {activeSection === 'events' && renderEventsSection()}
+        {activeSection === 'announcements' && renderAnnouncementsSection()}
+
+        {/* Keep existing dialogs and menus */}
+        {renderCreateAnnouncementDialog()}
+        {renderCreateDonationDialog()}
+        {renderSpendingDialog()}
+        {renderEventDialog()}
+
+        {/* Snackbar for messages */}
+        <Snackbar
+          open={!!successMessage}
+          autoHideDuration={6000}
+          onClose={() => setSuccessMessage('')}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Alert onClose={() => setSuccessMessage('')} severity="success">
+            {successMessage}
+          </Alert>
+        </Snackbar>
+
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={() => setError('')}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Alert onClose={() => setError('')} severity="error">
+            {error}
+          </Alert>
+        </Snackbar>
+      </Box>
     </Box>
   );
 };

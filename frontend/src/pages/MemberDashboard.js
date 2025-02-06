@@ -4,6 +4,8 @@ import {
   Container,
   Box,
   Typography,
+  Button,
+  Grid,
   Paper,
   Table,
   TableBody,
@@ -11,30 +13,41 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress,
-  Alert,
-  Button,
+  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
-  Grid,
+  Alert,
   Avatar,
+  IconButton,
+  Switch,
+  FormControlLabel,
+  Chip,
+  Fab,
+  Card,
+  CardContent,
   InputAdornment,
   FormControl,
   InputLabel,
   Select,
-  Card,
-  CardContent,
-  IconButton,
-  Switch,
-  FormControlLabel,
-  Chip
+  MenuItem,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Drawer
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import {
+  Close as CloseIcon,
+  Home as HomeIcon,
+  Event as EventIcon,
+  Announcement as AnnouncementIcon,
+  HowToReg as HowToRegIcon,
+  MonetizationOn as MonetizationOnIcon
+} from '@mui/icons-material';
 import axios from 'axios';
+import upiQRCode from '../images/upi-qr.png';  // Import QR code image
 
 const MemberDashboard = () => {
   const navigate = useNavigate();
@@ -78,6 +91,133 @@ const MemberDashboard = () => {
   const [itemType, setItemType] = useState(''); // 'announcement' or 'event'
   const [showPastEvents, setShowPastEvents] = useState(false);
   const [countdowns, setCountdowns] = useState({});
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({});
+
+  const styles = {
+    container: {
+      display: 'flex',
+      minHeight: '100vh',
+      backgroundColor: '#f0f7ff',
+      background: 'linear-gradient(135deg, #f0f7ff 0%, #e3f2ff 100%)',
+    },
+    sidebar: {
+      width: '240px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRight: '1px solid rgba(255, 255, 255, 0.3)',
+      padding: '24px',
+      display: 'flex',
+      flexDirection: 'column',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      bottom: 0,
+      overflowY: 'auto',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+      zIndex: 1000,
+    },
+    sidebarItem: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '12px 16px',
+      borderRadius: '12px',
+      marginBottom: '8px',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease',
+      color: '#1a237e',
+      '&:hover': {
+        backgroundColor: 'rgba(26, 35, 126, 0.05)',
+        transform: 'translateX(5px)',
+      },
+    },
+    mainContent: {
+      marginLeft: '260px', // Increased margin to create buffer
+      flex: 1,
+      padding: '24px 32px', // Increased left padding
+      width: 'calc(100% - 260px)', // Adjusted to account for new margin
+      boxSizing: 'border-box',
+    },
+    header: {
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '16px',
+      padding: '20px',
+      marginBottom: '24px',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    section: {
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '24px',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+    },
+    card: {
+      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+      borderRadius: '12px',
+      padding: '20px',
+      marginBottom: '16px',
+      boxShadow: '0 4px 16px 0 rgba(31, 38, 135, 0.05)',
+      transition: 'transform 0.3s ease',
+      '&:hover': {
+        transform: 'translateY(-5px)',
+      },
+    },
+    statCard: {
+      padding: '24px',
+      borderRadius: '16px',
+      color: 'white',
+      backgroundImage: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.2)',
+      boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+    },
+    table: {
+      '& .MuiTableCell-root': {
+        borderColor: 'rgba(224, 224, 224, 0.4)',
+      },
+      '& .MuiTableRow-root:nth-of-type(odd)': {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      },
+      '& .MuiTableRow-root:hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      },
+    },
+    fab: {
+      position: 'fixed',
+      bottom: '24px',
+      right: '24px',
+      backgroundColor: '#2e7d32',  // Green color for donation
+      color: 'white',
+      '&:hover': {
+        backgroundColor: '#1b5e20',
+      },
+    },
+    userProfile: {
+      marginTop: 'auto',
+      padding: '16px',
+      borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      position: 'sticky',
+      bottom: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    },
+    profilePicture: {
+      width: '40px',
+      height: '40px',
+      borderRadius: '50%',
+      border: '2px solid #1a237e',
+    },
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -260,6 +400,53 @@ const MemberDashboard = () => {
     setItemType('');
   };
 
+  const handleProfileClick = () => {
+    setProfileDrawerOpen(true);
+    setEditedProfile({ ...profile });
+  };
+
+  const handleProfileEdit = () => {
+    setEditMode(true);
+  };
+
+  const handleProfileSave = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      await axios.put(
+        `${process.env.REACT_APP_API_URL}/api/users/profile`,
+        editedProfile,
+        config
+      );
+
+      setProfile(editedProfile);
+      setEditMode(false);
+      setSuccessMessage('Profile updated successfully');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProfileCancel = () => {
+    setEditMode(false);
+    setEditedProfile({ ...profile });
+  };
+
+  const handleProfileChange = (e) => {
+    const { name, value } = e.target;
+    setEditedProfile(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const renderDetailDialog = () => {
     if (!selectedItem) return null;
 
@@ -333,223 +520,341 @@ const MemberDashboard = () => {
     );
   };
 
-  const renderEvents = () => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0); // Set to start of day for fair comparison
-    
-    const filteredEvents = events.filter(event => {
-      const eventDate = new Date(event.date);
-      eventDate.setHours(0, 0, 0, 0);
-      return showPastEvents ? eventDate < now : eventDate >= now;
-    }).sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return showPastEvents ? dateB - dateA : dateA - dateB;
-    });
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case 'dashboard':
+        return (
+          <>
+            {/* Stats Overview */}
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              {/* Donations Stats */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #1a237e 0%, #3949ab 100%)' }}>
+                  <Typography variant="subtitle1" gutterBottom>Total Donated</Typography>
+                  <Typography variant="h4">₹{donationStats.totalDonated}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #2e7d32 0%, #4caf50 100%)' }}>
+                  <Typography variant="subtitle1" gutterBottom>Verified Donations</Typography>
+                  <Typography variant="h4">{donationStats.verifiedDonations}</Typography>
+                </Paper>
+              </Grid>
 
-    return (
-      <Grid item xs={12}>
-        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              {showPastEvents ? 'Past Events' : 'Upcoming Events'}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {/* Events & Announcements Stats */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #0288d1 0%, #03a9f4 100%)' }}>
+                  <Typography variant="subtitle1" gutterBottom>Upcoming Events</Typography>
+                  <Typography variant="h4">{events.filter(e => new Date(e.date) >= new Date()).length}</Typography>
+                </Paper>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Paper sx={{ ...styles.statCard, background: 'linear-gradient(135deg, #c2185b 0%, #e91e63 100%)' }}>
+                  <Typography variant="subtitle1" gutterBottom>Recent Announcements</Typography>
+                  <Typography variant="h4">{announcements.length}</Typography>
+                </Paper>
+              </Grid>
+            </Grid>
+
+            {/* Recent Activity Section */}
+            <Grid container spacing={3}>
+              {/* Recent Events */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={styles.section}>
+                  <Typography variant="h6" gutterBottom>Recent Event</Typography>
+                  <List>
+                    {events.slice(0, 1).map((event) => (
+                      <ListItem 
+                        key={event.id} 
+                        sx={{ 
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                          }
+                        }} 
+                        onClick={() => handleItemClick(event, 'event')}
+                      >
+                        <ListItemText
+                          primary={<Typography variant="subtitle1">{event.title}</Typography>}
+                          secondary={
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(event.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button color="primary" onClick={() => setActiveSection('events')}>View All Events</Button>
+                </Paper>
+              </Grid>
+
+              {/* Recent Announcements */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={styles.section}>
+                  <Typography variant="h6" gutterBottom>Recent Announcement</Typography>
+                  <List>
+                    {announcements.slice(0, 1).map((announcement) => (
+                      <ListItem 
+                        key={announcement.id} 
+                        sx={{ 
+                          cursor: 'pointer',
+                          borderRadius: 1,
+                          '&:hover': {
+                            backgroundColor: 'rgba(0, 0, 0, 0.04)'
+                          }
+                        }} 
+                        onClick={() => handleItemClick(announcement, 'announcement')}
+                      >
+                        <ListItemText
+                          primary={<Typography variant="subtitle1">{announcement.title}</Typography>}
+                          secondary={
+                            <Typography variant="body2" color="text.secondary">
+                              {new Date(announcement.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </Typography>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                  <Button color="primary" onClick={() => setActiveSection('announcements')}>View All Announcements</Button>
+                </Paper>
+              </Grid>
+            </Grid>
+          </>
+        );
+
+      case 'events':
+        return (
+          <Box sx={styles.section}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6">Events</Typography>
               <FormControlLabel
                 control={
                   <Switch
                     checked={showPastEvents}
                     onChange={(e) => setShowPastEvents(e.target.checked)}
-                    color="primary"
                   />
                 }
                 label={showPastEvents ? "Show Upcoming Events" : "Show Past Events"}
               />
             </Box>
+            <Grid container spacing={3}>
+              {events
+                .filter(event => {
+                  const eventDate = new Date(event.date);
+                  const now = new Date();
+                  return showPastEvents ? eventDate < now : eventDate >= now;
+                })
+                .map((event) => (
+                  <Grid item xs={12} sm={6} md={4} key={event.id}>
+                    <Card sx={styles.card} onClick={() => handleItemClick(event, 'event')}>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>{event.title}</Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          {event.description}
+                        </Typography>
+                        <Typography variant="subtitle2">
+                          Date: {new Date(event.date).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </Typography>
+                        {event.time && (
+                          <Typography variant="subtitle2">Time: {event.time}</Typography>
+                        )}
+                        {event.location && (
+                          <Typography variant="subtitle2">Location: {event.location}</Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+            </Grid>
           </Box>
-          <Grid container spacing={2}>
-            {filteredEvents.map((event) => (
-              <Grid item xs={12} sm={6} md={4} key={event.id}>
-                <Card 
-                  sx={{ 
-                    height: '100%', 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    cursor: 'pointer',
-                    '&:hover': {
-                      boxShadow: 6
-                    }
-                  }}
-                  onClick={() => handleItemClick(event, 'event')}
-                >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography variant="h6" gutterBottom noWrap>
-                      {event.title}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        mb: 1
-                      }}
-                    >
-                      {event.description}
-                    </Typography>
-                    <Box sx={{ mt: 'auto' }}>
-                      <Typography variant="subtitle2" color="primary">
-                        Date: {new Date(event.date).toLocaleDateString('en-US', {
+        );
+
+      case 'announcements':
+        return (
+          <Box sx={styles.section}>
+            <Typography variant="h6" gutterBottom>Announcements</Typography>
+            <Grid container spacing={3}>
+              {announcements.map((announcement) => (
+                <Grid item xs={12} sm={6} md={4} key={announcement.id}>
+                  <Card sx={styles.card} onClick={() => handleItemClick(announcement, 'announcement')}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>{announcement.title}</Typography>
+                      <Typography variant="body2" paragraph>{announcement.content}</Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        Posted on: {new Date(announcement.created_at).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
                         })}
                       </Typography>
-                      {event.time && (
-                        <Typography variant="subtitle2" color="primary">
-                          Time: {event.time}
-                        </Typography>
-                      )}
-                      {event.location && (
-                        <Typography variant="subtitle2" color="text.secondary" noWrap>
-                          Location: {event.location}
-                        </Typography>
-                      )}
-                      {!showPastEvents && countdowns[event.id] && (
-                        <Box sx={{ mt: 1 }}>
-                          <Chip 
-                            label={`${countdowns[event.id].days}d ${countdowns[event.id].hours}h ${countdowns[event.id].minutes}m left`}
-                            color="error"
-                            size="small"
-                            variant="outlined"
-                          />
-                        </Box>
-                      )}
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-            {filteredEvents.length === 0 && (
-              <Grid item xs={12}>
-                <Typography variant="body1" align="center" color="text.secondary">
-                  {showPastEvents ? 'No past events' : 'No upcoming events scheduled'}
-                </Typography>
-              </Grid>
-            )}
-          </Grid>
-        </Paper>
-      </Grid>
-    );
-  };
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        );
 
-  const renderAnnouncements = () => (
-    <Grid item xs={12}>
-      <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-        <Typography variant="h6" gutterBottom>Announcements</Typography>
-        <Grid container spacing={2}>
-          {announcements.map((announcement) => (
-            <Grid item xs={12} sm={6} md={4} key={announcement.id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  cursor: 'pointer',
-                  '&:hover': {
-                    boxShadow: 6
-                  }
-                }}
-                onClick={() => handleItemClick(announcement, 'announcement')}
+      case 'attendance':
+        return (
+          <Box sx={styles.section}>
+            <Typography variant="h6" gutterBottom>Attendance Records</Typography>
+            <TableContainer>
+              <Table sx={styles.table}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Marked By</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {attendance.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={record.status}
+                          color={record.status === 'present' ? 'success' : 'error'}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{record.marked_by_name || 'System'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+
+      case 'donations':
+        return (
+          <Box sx={styles.section}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6">Donations</Typography>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<MonetizationOnIcon />}
+                onClick={handleDonateClick}
               >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography variant="h6" gutterBottom noWrap>
-                    {announcement.title}
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    color="text.secondary"
-                    sx={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      mb: 1
-                    }}
-                  >
-                    {announcement.content}
-                  </Typography>
-                  <Typography variant="caption" color="textSecondary">
-                    Posted: {new Date(announcement.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-          {announcements.length === 0 && (
-            <Grid item xs={12}>
-              <Typography variant="body1" align="center" color="text.secondary">
-                No announcements found
-              </Typography>
-            </Grid>
-          )}
-        </Grid>
-      </Paper>
-    </Grid>
-  );
+                Make Donation
+              </Button>
+            </Box>
+            <TableContainer>
+              <Table sx={styles.table}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Date</TableCell>
+                    <TableCell>Amount</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell>Payment Method</TableCell>
+                    <TableCell>Reference Number</TableCell>
+                    <TableCell>Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {donations.map((donation) => (
+                    <TableRow key={donation.id}>
+                      <TableCell>{new Date(donation.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell>₹{donation.amount}</TableCell>
+                      <TableCell>{donation.description}</TableCell>
+                      <TableCell>{donation.payment_method}</TableCell>
+                      <TableCell>{donation.reference_number || '-'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={donation.status.charAt(0).toUpperCase() + donation.status.slice(1)}
+                          color={
+                            donation.status === 'verified'
+                              ? 'success'
+                              : donation.status === 'rejected'
+                              ? 'error'
+                              : 'warning'
+                          }
+                          size="small"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   const renderDonateDialog = () => (
     <Dialog open={openDonateDialog} onClose={() => setOpenDonateDialog(false)} maxWidth="md" fullWidth>
-      <DialogTitle>Make a Donation</DialogTitle>
+      <DialogTitle>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">Make a Donation</Typography>
+          <IconButton onClick={() => setOpenDonateDialog(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Grid container spacing={3}>
           {/* Payment Details Section */}
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
-                Payment Details
+                Bank Details
               </Typography>
-              <Paper sx={{ p: 2, mb: 2, bgcolor: '#f5f5f5' }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Bank Details:
-                </Typography>
-                <Typography variant="body2">
-                  Account Name: Ikshana Foundation<br />
-                  Account Number: 1234567890<br />
-                  IFSC Code: SBIN0123456<br />
-                  Bank: State Bank of India<br />
-                  Branch: Hyderabad Main Branch
-                </Typography>
-              </Paper>
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  UPI QR Code
-                </Typography>
-                <Box
-                  component="img"
-                  src="/images/upi-qr.png"
-                  alt="UPI QR Code"
-                  sx={{
-                    width: '200px',
-                    height: '200px',
-                    mb: 1,
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    p: 1
-                  }}
-                />
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                  UPI ID: ikshana@upi
-                </Typography>
-              </Paper>
+              <Typography variant="body2" component="div" sx={{ mb: 2 }}>
+                Account Name: Ikshana Foundation<br />
+                Account Number: 1234567890<br />
+                IFSC Code: SBIN0123456<br />
+                Bank: State Bank of India<br />
+                Branch: Hyderabad Main Branch
+              </Typography>
+            </Box>
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" gutterBottom>
+                UPI QR Code
+              </Typography>
+              <Box
+                component="img"
+                src={upiQRCode}
+                alt="UPI QR Code"
+                sx={{
+                  width: '200px',
+                  height: '200px',
+                  mb: 1,
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  p: 1,
+                  objectFit: 'contain',
+                  backgroundColor: '#fff'
+                }}
+                onError={(e) => {
+                  console.error('Failed to load UPI QR code');
+                  e.target.style.display = 'none';
+                }}
+              />
+              <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                UPI ID: ikshana@upi
+              </Typography>
             </Box>
           </Grid>
 
@@ -628,6 +933,133 @@ const MemberDashboard = () => {
     </Dialog>
   );
 
+  const renderProfileDrawer = () => (
+    <Drawer
+      anchor="right"
+      open={profileDrawerOpen}
+      onClose={() => {
+        setProfileDrawerOpen(false);
+        setEditMode(false);
+      }}
+      sx={{
+        '& .MuiDrawer-paper': {
+          width: '400px',
+          padding: '24px',
+        },
+      }}
+    >
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6">Profile Details</Typography>
+          <Box>
+            {editMode ? (
+              <>
+                <Button variant="outlined" onClick={handleProfileCancel} sx={{ mr: 1 }}>
+                  Cancel
+                </Button>
+                <Button variant="contained" color="primary" onClick={handleProfileSave}>
+                  Save Changes
+                </Button>
+              </>
+            ) : (
+              <Button variant="contained" color="primary" onClick={handleProfileEdit}>
+                Edit Profile
+              </Button>
+            )}
+            <IconButton onClick={() => setProfileDrawerOpen(false)} sx={{ ml: 1 }}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+          {/* Profile Picture */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <Avatar
+              src={profile.profile_picture}
+              alt={profile.full_name}
+              sx={{ width: 120, height: 120 }}
+            />
+          </Box>
+
+          {/* ID Number - Read Only */}
+          <TextField
+            label="ID Number"
+            value={profile.ikshana_id || ''}
+            disabled
+            fullWidth
+          />
+
+          {/* Full Name */}
+          <TextField
+            label="Full Name"
+            name="full_name"
+            value={editMode ? editedProfile.full_name || '' : profile.full_name || ''}
+            onChange={handleProfileChange}
+            disabled={true}
+            fullWidth
+          />
+
+          {/* Date of Birth */}
+          <TextField
+            label="Date of Birth"
+            name="dob"
+            type="date"
+            value={editMode ? editedProfile.dob || '' : profile.dob || ''}
+            onChange={handleProfileChange}
+            disabled={!editMode}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
+
+          {/* College Roll Number */}
+          <TextField
+            label="College Roll Number"
+            name="college_roll_number"
+            value={editMode ? editedProfile.college_roll_number || '' : profile.college_roll_number || ''}
+            onChange={handleProfileChange}
+            disabled={true}
+            fullWidth
+          />
+
+          {/* Department */}
+          <TextField
+            label="Department"
+            name="department"
+            value={editMode ? editedProfile.department || '' : profile.department || ''}
+            onChange={handleProfileChange}
+            disabled={!editMode}
+            fullWidth
+          />
+
+          {/* Section */}
+          <TextField
+            label="Section"
+            name="section"
+            value={editMode ? editedProfile.section || '' : profile.section || ''}
+            onChange={handleProfileChange}
+            disabled={!editMode}
+            fullWidth
+          />
+
+          {/* Designation */}
+          <TextField
+            label="Designation"
+            name="designation"
+            value={editMode ? editedProfile.designation || '' : profile.designation || ''}
+            onChange={handleProfileChange}
+            disabled={true} // Changed from !editMode to true to make it always disabled
+            fullWidth
+          />
+        </Box>
+
+        {/* Remove the bottom action buttons since they're now in the header */}
+        <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+        </Box>
+      </Box>
+    </Drawer>
+  );
+
   // Update countdowns every second
   useEffect(() => {
     const calculateCountdown = (eventDate) => {
@@ -672,291 +1104,139 @@ const MemberDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Personal Details Section */}
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <Avatar
-                  src={editProfile ? (selectedImage ? URL.createObjectURL(selectedImage) : tempProfile.profile_picture) : profile.profile_picture}
-                  sx={{ width: 100, height: 100, mr: 2 }}
-                />
-                {editProfile && (
-                  <Box>
-                    <input
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      id="profile-picture-upload"
-                      type="file"
-                      onChange={handleImageChange}
-                    />
-                    <label htmlFor="profile-picture-upload">
-                      <Button variant="outlined" component="span">
-                        Change Picture
-                      </Button>
-                    </label>
-                  </Box>
-                )}
-              </Box>
-              {!editProfile ? (
-                <Button variant="contained" onClick={handleEditProfile}>
-                  Edit Profile
-                </Button>
-              ) : (
-                <Box>
-                  <Button 
-                    variant="outlined" 
-                    onClick={() => setEditProfile(false)} 
-                    sx={{ mr: 1 }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    variant="contained"
-                    onClick={handleSaveProfile}
-                    disabled={loading}
-                  >
-                    {loading ? 'Saving...' : 'Save'}
-                  </Button>
-                </Box>
-              )}
-            </Box>
+    <Box sx={styles.container}>
+      {/* Sidebar */}
+      <Box sx={styles.sidebar}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Box
+            component="img"
+            src="/images/favicon.ico"
+            alt="Ikshana Logo"
+            sx={{
+              width: '32px',
+              height: '32px',
+              mr: 2
+            }}
+          />
+          <Typography variant="h6" sx={{ color: '#1a237e' }}>
+            Ikshana Portal
+          </Typography>
+        </Box>
 
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  name="full_name"
-                  value={editProfile ? tempProfile.full_name : profile.full_name}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Date of Birth"
-                  name="dob"
-                  type="date"
-                  value={editProfile ? tempProfile.dob : profile.dob}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="College Roll Number"
-                  name="college_roll_number"
-                  value={editProfile ? tempProfile.college_roll_number : profile.college_roll_number}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Ikshana ID"
-                  value={profile.ikshana_id}
-                  disabled={true}
-                  sx={{ mb: 2 }}
-                  helperText="This is your unique Ikshana ID and cannot be changed"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Designation"
-                  name="designation"
-                  value={editProfile ? tempProfile.designation : profile.designation}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Department"
-                  name="department"
-                  value={editProfile ? tempProfile.department : profile.department}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Section"
-                  name="section"
-                  value={editProfile ? tempProfile.section : profile.section}
-                  onChange={handleInputChange}
-                  disabled={!editProfile}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-            </Grid>
-          </Paper>
-        </Grid>
-      </Grid>
+        {/* Navigation Items */}
+        <Box
+          sx={{
+            ...styles.sidebarItem,
+            backgroundColor: activeSection === 'dashboard' ? 'rgba(26, 35, 126, 0.1)' : 'transparent',
+          }}
+          onClick={() => setActiveSection('dashboard')}
+        >
+          <HomeIcon sx={{ mr: 2 }} />
+          <Typography>Dashboard</Typography>
+        </Box>
+        <Box
+          sx={{
+            ...styles.sidebarItem,
+            backgroundColor: activeSection === 'events' ? 'rgba(26, 35, 126, 0.1)' : 'transparent',
+          }}
+          onClick={() => setActiveSection('events')}
+        >
+          <EventIcon sx={{ mr: 2 }} />
+          <Typography>Events</Typography>
+        </Box>
+        <Box
+          sx={{
+            ...styles.sidebarItem,
+            backgroundColor: activeSection === 'announcements' ? 'rgba(26, 35, 126, 0.1)' : 'transparent',
+          }}
+          onClick={() => setActiveSection('announcements')}
+        >
+          <AnnouncementIcon sx={{ mr: 2 }} />
+          <Typography>Announcements</Typography>
+        </Box>
+        <Box
+          sx={{
+            ...styles.sidebarItem,
+            backgroundColor: activeSection === 'attendance' ? 'rgba(26, 35, 126, 0.1)' : 'transparent',
+          }}
+          onClick={() => setActiveSection('attendance')}
+        >
+          <HowToRegIcon sx={{ mr: 2 }} />
+          <Typography>Attendance</Typography>
+        </Box>
+        <Box
+          sx={{
+            ...styles.sidebarItem,
+            backgroundColor: activeSection === 'donations' ? 'rgba(26, 35, 126, 0.1)' : 'transparent',
+          }}
+          onClick={() => setActiveSection('donations')}
+        >
+          <MonetizationOnIcon sx={{ mr: 2 }} />
+          <Typography>Donations</Typography>
+        </Box>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Member Dashboard
-        </Typography>
-        <Button variant="contained" color="error" onClick={handleLogout}>
-          Logout
-        </Button>
+        {/* User Profile Section */}
+        <Box 
+          sx={{ 
+            ...styles.userProfile,
+            cursor: 'pointer',
+            '&:hover': {
+              backgroundColor: 'rgba(26, 35, 126, 0.05)',
+            }
+          }}
+          onClick={handleProfileClick}
+        >
+          <Avatar
+            src={profile.profile_picture}
+            alt={profile.full_name}
+            sx={styles.profilePicture}
+          />
+          <Box>
+            <Typography variant="subtitle2" sx={{ color: '#1a237e' }}>
+              {profile.full_name}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#1a237e' }}>
+              {profile.ikshana_id}
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
+      {/* Main Content */}
+      <Box sx={styles.mainContent}>
+        {/* Header */}
+        <Box sx={styles.header}>
+          <Typography variant="h5" sx={{ color: '#1a237e' }}>
+            {activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}
+          </Typography>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleLogout}
+          >
+            Logout
+          </Button>
+        </Box>
 
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccessMessage(null)}>
-          {successMessage}
-        </Alert>
-      )}
+        {/* Dynamic Section Content */}
+        {renderSectionContent()}
+      </Box>
 
-      <Grid container spacing={3}>
-        {renderEvents()}
-        {renderAnnouncements()}
-        {/* Attendance Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Your Attendance
-            </Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Marked By</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {attendance.map((record) => (
-                    <TableRow key={record.id}>
-                      <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{record.status}</TableCell>
-                      <TableCell>{record.marked_by_name || 'System'}</TableCell>
-                    </TableRow>
-                  ))}
-                  {attendance.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} align="center">No attendance records found</TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Grid>
-
-        {/* Donations Section */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Your Donations</Typography>
-              <Button variant="contained" color="primary" onClick={handleDonateClick}>
-                Make New Donation
-              </Button>
-            </Box>
-
-            {/* Donation Statistics */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 2, bgcolor: 'success.light', color: 'white' }}>
-                  <Typography variant="h6">Total Donated</Typography>
-                  <Typography variant="h4">₹{donationStats.totalDonated}</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 2, bgcolor: 'info.light', color: 'white' }}>
-                  <Typography variant="h6">Verified Donations</Typography>
-                  <Typography variant="h4">{donationStats.verifiedDonations}</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 2, bgcolor: 'warning.light', color: 'white' }}>
-                  <Typography variant="h6">Pending</Typography>
-                  <Typography variant="h4">{donationStats.pendingDonations}</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={12} sm={6} md={3}>
-                <Paper sx={{ p: 2, bgcolor: 'error.light', color: 'white' }}>
-                  <Typography variant="h6">Rejected</Typography>
-                  <Typography variant="h4">{donationStats.rejectedDonations}</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Amount</TableCell>
-                    <TableCell>Description</TableCell>
-                    <TableCell>Payment Method</TableCell>
-                    <TableCell>Reference Number</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Verified By</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {donations.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} align="center">No donations found</TableCell>
-                    </TableRow>
-                  ) : (
-                    donations.map((donation) => (
-                      <TableRow key={donation.id}>
-                        <TableCell>{new Date(donation.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>₹{donation.amount}</TableCell>
-                        <TableCell>{donation.description}</TableCell>
-                        <TableCell>{donation.payment_method}</TableCell>
-                        <TableCell>{donation.reference_number || '-'}</TableCell>
-                        <TableCell>
-                          <Typography
-                            color={
-                              donation.status === 'verified'
-                                ? 'success.main'
-                                : donation.status === 'rejected'
-                                ? 'error.main'
-                                : 'warning.main'
-                            }
-                          >
-                            {donation.status.charAt(0).toUpperCase() + donation.status.slice(1)}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{donation.verified_by || '-'}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {renderDonateDialog()}
+      {/* Dialogs */}
       {renderDetailDialog()}
-    </Container>
+      {renderDonateDialog()}
+      {renderProfileDrawer()}
+
+      {/* Add Floating Donation Button */}
+      <Fab 
+        color="primary" 
+        sx={styles.fab}
+        onClick={handleDonateClick}
+        aria-label="donate"
+      >
+        <MonetizationOnIcon />
+      </Fab>
+    </Box>
   );
 };
 
